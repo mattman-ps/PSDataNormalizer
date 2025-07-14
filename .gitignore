@@ -1,0 +1,64 @@
+# Data directories
+data/
+Data/
+
+# Generated output files
+*.csv
+*.json
+
+# PowerShell execution policy files
+*.ps1xml
+
+# Temporary files
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Backup files
+*.bak
+*.backup
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test results
+Tests/TestResults/
+*.trx
+
+# PowerShell Gallery package files
+*.nupkg
+
+# Module build artifacts
+bin/
+obj/
+
+# Generated contact lists and test data
+RandomContacts_*.csv
+RandomContacts_*.json
+test-data-*.csv
+test-data-*.json
+contact-*.csv
+contact-*.json
+
+# Any generated fake data files
+fake-*.csv
+fake-*.json
+sample-*.csv
+sample-*.json
