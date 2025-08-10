@@ -3,14 +3,14 @@
 
 # Phone number regex patterns supporting US and international formats
 $script:PhonePatterns = @(
-    # US formats: (555) 123-4567, 555-123-4567, 555.123.4567, 5551234567
-    '^\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$',
-    # US with country code: +1-555-123-4567, +1 (555) 123-4567
-    '^\+?1[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$',
-    # International formats: +44 20 7946 0958, +33 1 42 86 83 26, +86 138 0013 8000
-    '^\+[1-9]\d{0,3}[-.\s]?(\d{1,4}[-.\s]?){1,4}\d{1,9}$',
-    # General international: 10-15 digits with optional separators and country codes
-    '^\+?[1-9]\d{0,3}[-.\s]?(\d{1,4}[-.\s]?){1,6}\d{1,4}$'
+    # US formats: (555) 123-4567, 555-123-4567, 555.123.4567, 5551234567 (exactly 10 digits)
+    '^\(?[2-9][0-9]{2}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$',
+    # US with country code: +1-555-123-4567, +1 (555) 123-4567 (11 digits total)
+    '^\+?1[-.\s]?\(?[2-9][0-9]{2}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$',
+    # International formats with country codes (minimum 7 digits, max 15, must start with +)
+    '^\+[2-9]\d{1,2}[-.\s]?(\d{1,4}[-.\s]?){1,4}\d{1,9}$',
+    # International without + but with clear international prefixes (avoid ZIP code conflicts)
+    '^00[1-9]\d{1,2}[-.\s]?(\d{1,4}[-.\s]?){1,4}\d{1,9}$'
 )
 
 # Postal/ZIP code regex patterns supporting multiple countries
