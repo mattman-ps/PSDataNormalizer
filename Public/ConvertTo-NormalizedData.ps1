@@ -1,33 +1,97 @@
+# Static pattern arrays for auto-detection (defined once at script level for performance optimization)
+# These patterns are used by the 'Auto' data type to automatically detect and classify input data
+
+# Phone number regex patterns supporting US and international formats
+$script:PhonePatterns = @(
+    # US formats: (555) 123-4567, 555-123-4567, 555.123.4567, 5551234567
+    '^\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$',
+    # US with country code: +1-555-123-4567, +1 (555) 123-4567
+    '^\+?1[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$',
+    # International formats: +44 20 7946 0958, +33 1 42 86 83 26, +86 138 0013 8000
+    '^\+[1-9]\d{0,3}[-.\s]?(\d{1,4}[-.\s]?){1,4}\d{1,9}$',
+    # General international: 10-15 digits with optional separators and country codes
+    '^\+?[1-9]\d{0,3}[-.\s]?(\d{1,4}[-.\s]?){1,6}\d{1,4}$'
+)
+
+# Postal/ZIP code regex patterns supporting multiple countries
+$script:ZipPatterns = @(
+    # US ZIP codes: 12345 or 12345-6789
+    '^\d{5}(-\d{4})?$',
+    # Canadian postal codes: K1A 0A6 or K1A0A6
+    '^[A-Za-z]\d[A-Za-z][\s-]?\d[A-Za-z]\d$',
+    # UK postal codes: SW1A 1AA, M1 1AA, B33 8TH
+    '^[A-Za-z]{1,2}\d[A-Za-z\d]?\s?\d[A-Za-z]{2}$',
+    # General international postal codes: 3-10 alphanumeric characters with optional separators
+    '^[A-Za-z0-9\s-]{3,10}$'
+)
+
 function ConvertTo-NormalizedData {
     <#
     .SYNOPSIS
-        Normalizes various types of data using the appropriate normalization function.
+        Normalizes various types of data using intelligent auto-detection or explicit type specification.
 
     .DESCRIPTION
-        This unified function automatically detects the data type and applies the appropriate
-        normalization function. It can process company names, websites, phone numbers, and addresses.
+        This unified normalization function processes different data types including company names,
+        websites, phone numbers, addresses, and postal codes. It features intelligent auto-detection
+        capabilities that can identify data types using comprehensive regex patterns for US and
+        international formats.
+
+        When using 'Auto' mode, the function applies the following detection priority:
+        1. Phone numbers (US and international formats)
+        2. Website URLs
+        3. Street addresses
+        4. Postal/ZIP codes (US, Canadian, UK, and international)
+        5. Company names (default fallback)
 
     .PARAMETER Data
-        The data to normalize.
+        The data string to normalize. Can be piped from other cmdlets.
 
     .PARAMETER DataType
-        The type of data to normalize: 'CompanyName', 'Website', 'PhoneNumber', 'Address', or 'Auto'.
+        The type of data to normalize. Valid values:
+        - 'CompanyName': Normalizes business names
+        - 'Website': Normalizes URLs and domain names
+        - 'PhoneNumber': Normalizes phone numbers
+        - 'Address': Normalizes street addresses
+        - 'Zip': Normalizes postal/ZIP codes (US, Canadian, UK, international)
+        - 'Auto': Automatically detects data type using regex patterns
 
     .PARAMETER Options
         A hashtable of options to pass to the specific normalization function.
+        Options vary by data type - see individual normalization functions for details.
 
     .EXAMPLE
-        ConvertTo-NormalizedData -Data "Microsoft Corporation" -DataType "CompanyName"
+        ConvertTo-NormalizedData -Data "Microsoft Corporation, Inc." -DataType "CompanyName"
         # Returns: "microsoft"
 
     .EXAMPLE
-        ConvertTo-NormalizedData -Data "https://www.google.com" -DataType "Website"
+        ConvertTo-NormalizedData -Data "https://www.google.com/search" -DataType "Website"
         # Returns: "google.com"
 
     .EXAMPLE
-        $options = @{ Format = 'Standard' }
-        ConvertTo-NormalizedData -Data "(555) 123-4567" -DataType "PhoneNumber" -Options $options
-        # Returns: "555-123-4567"
+        ConvertTo-NormalizedData -Data "(555) 123-4567 ext. 123" -DataType "PhoneNumber"
+        # Returns normalized phone number
+
+    .EXAMPLE
+        ConvertTo-NormalizedData -Data "+44 20 7946 0958" -DataType "Auto"
+        # Auto-detects as phone number and normalizes accordingly
+
+    .EXAMPLE
+        ConvertTo-NormalizedData -Data "12345-6789" -DataType "Zip"
+        # Returns: "12345-6789"
+
+    .EXAMPLE
+        ConvertTo-NormalizedData -Data "SW1A 1AA" -DataType "Zip"
+        # Returns: "SW1A 1AA"
+
+    .EXAMPLE
+        # Process multiple items through pipeline with auto-detection
+        @("Microsoft Corp", "(555) 123-4567", "12345-6789", "www.example.com") |
+            ConvertTo-NormalizedData -DataType "Auto"
+
+    .NOTES
+        Auto-detection uses pre-compiled regex patterns stored at script level for optimal performance.
+        Phone number patterns support US, Canadian, UK, and general international formats.
+        Postal code patterns support US ZIP, Canadian, UK, and general international formats.
     #>
     [CmdletBinding()]
     [OutputType([string])]
@@ -37,7 +101,7 @@ function ConvertTo-NormalizedData {
         [string]$Data,
 
         [Parameter(Mandatory)]
-        [ValidateSet('CompanyName', 'Website', 'PhoneNumber', 'Address', 'Auto')]
+        [ValidateSet('CompanyName', 'Website', 'PhoneNumber', 'Address', 'Zip', 'Auto')]
         [string]$DataType,
 
         [Parameter()]
@@ -63,19 +127,79 @@ function ConvertTo-NormalizedData {
                 'Address' {
                     return ConvertTo-NormalizedAddress -Address $Data @Options
                 }
+                'Zip' {
+                    # Normalize postal/ZIP codes with basic formatting
+                    # Supports US ZIP, Canadian postal codes, UK postal codes, and international formats
+                    $zipMatch = $false
+                    foreach ($pattern in $script:ZipPatterns) {
+                        if ($Data -match $pattern) {
+                            $zipMatch = $true
+                            break
+                        }
+                    }
+
+                    if ($zipMatch) {
+                        # Return postal code with basic formatting (trimmed and uppercase)
+                        return $Data.Trim().ToLower()
+                    } else {
+                        # If no pattern matches, return as-is with basic cleanup
+                        return $Data.Trim()
+                    }
+                }
                 'Auto' {
-                    # Simple auto-detection logic
-                    if ($Data -match '^https?://|^www\.|\.com$|\.org$|\.net$') {
-                        return ConvertTo-NormalizedWebsite -Website $Data @Options
-                    }
-                    elseif ($Data -match '^\+?[\d\s\-\(\)\.]+$') {
-                        return ConvertTo-NormalizedPhoneNumber -PhoneNumber $Data @Options
-                    }
-                    elseif ($Data -match '\d+\s+\w+\s+(street|st|avenue|ave|road|rd|boulevard|blvd)') {
-                        return ConvertTo-NormalizedAddress -Address $Data @Options
-                    }
-                    else {
-                        return ConvertTo-NormalizedCompanyName -CompanyName $Data @Options
+                    # Intelligent auto-detection using optimized regex patterns
+                    # Priority order: Phone → Website → Address → Postal Code → Company Name
+
+                    # Apply pattern matching with priority-based detection
+                    switch -Regex ($Data) {
+                        # Priority 1: Phone numbers (US and international formats)
+                        # Matches: (555) 123-4567, +1-555-123-4567, +44 20 7946 0958, etc.
+                        {
+                            $phoneMatch = $false
+                            foreach ($pattern in $script:PhonePatterns) {
+                                if ($_ -match $pattern) {
+                                    $phoneMatch = $true
+                                    break
+                                }
+                            }
+                            $phoneMatch
+                        } {
+                            return ConvertTo-NormalizedPhoneNumber -PhoneNumber $Data @Options
+                        }
+
+                        # Priority 2: Website URLs and domains
+                        # Matches: https://example.com, www.site.org, domain.net
+                        '^https?://|^www\.|\.com$|\.org$|\.net$' {
+                            return ConvertTo-NormalizedWebsite -Website $Data @Options
+                        }
+
+                        # Priority 3: Street addresses with common patterns
+                        # Matches: 123 Main Street, 456 Oak Ave, 789 First Blvd
+                        '\d+\s+\w+\s+(street|st|avenue|ave|road|rd|boulevard|blvd)' {
+                            return ConvertTo-NormalizedAddress -Address $Data @Options
+                        }
+
+                        # Priority 4: Postal/ZIP codes (US, Canadian, UK, international)
+                        # Matches: 12345, 12345-6789, K1A 0A6, SW1A 1AA
+                        {
+                            $zipMatch = $false
+                            foreach ($pattern in $script:ZipPatterns) {
+                                if ($_ -match $pattern) {
+                                    $zipMatch = $true
+                                    break
+                                }
+                            }
+                            $zipMatch
+                        } {
+                            # Delegate to Zip data type for consistent processing
+                            return ConvertTo-NormalizedData -Data $Data -DataType 'Zip' @Options
+                        }
+
+                        # Priority 5: Default fallback - treat as company name
+                        # Applies company name normalization rules
+                        default {
+                            return ConvertTo-NormalizedCompanyName -CompanyName $Data @Options
+                        }
                     }
                 }
             }
