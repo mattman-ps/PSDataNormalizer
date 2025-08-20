@@ -93,6 +93,30 @@ Describe 'PSDataNormalizer Module Tests' {
         It 'Should keep street suffixes when requested' {
             ConvertTo-NormalizedAddress -Address '123 Main Street' -KeepStreetSuffixes | Should -Be '123 main street'
         }
+
+        It 'Should handle multiple suite numbers correctly' {
+            # Test the original issue case
+            ConvertTo-NormalizedAddress -Address '6325 Mcleod Dr Suite# 7 & 8' | Should -Be '6325 mcleod'
+
+            # Test various multiple suite formats
+            ConvertTo-NormalizedAddress -Address '123 Main Street Suite 5A & 5B' | Should -Be '123 main'
+            ConvertTo-NormalizedAddress -Address '456 Oak Ave Apt 2-4' | Should -Be '456 oak'
+            ConvertTo-NormalizedAddress -Address '789 Pine Road Unit 100-102' | Should -Be '789 pine'
+            ConvertTo-NormalizedAddress -Address '321 Elm St Ste. A, B & C' | Should -Be '321 elm'
+
+            # Test with different separators
+            ConvertTo-NormalizedAddress -Address '555 Broadway Suite 1 & 2 & 3' | Should -Be '555 broadway'
+            ConvertTo-NormalizedAddress -Address '777 First Ave Apt 10A-10C' | Should -Be '777 first'
+            ConvertTo-NormalizedAddress -Address '999 Second St Unit 5, 6, 7' | Should -Be '999 second'
+        }
+
+        It 'Should handle complex office designations' {
+            # Test various office/suite keywords with multiple numbers
+            ConvertTo-NormalizedAddress -Address '100 Third St Floor 2 & 3' | Should -Be '100 third'
+            ConvertTo-NormalizedAddress -Address '200 Fourth Ave Room 101-103' | Should -Be '200 fourth'
+            ConvertTo-NormalizedAddress -Address '300 Fifth Blvd Building A & B' | Should -Be '300 fifth'
+            ConvertTo-NormalizedAddress -Address '400 Sixth Rd Fl. 1-5' | Should -Be '400 sixth'
+        }
     }
 
     Context 'Unified Data Normalization' {
